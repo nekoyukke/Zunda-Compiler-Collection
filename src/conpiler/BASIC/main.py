@@ -10,10 +10,20 @@ if str(repo_root) not in sys.path:
 import src.util as util"""
 
 lex = lexer.Lexer()
-toks = lex.tokenize("10 FOR I = 0 TO 10\n" \
-                    "20 FOR J = 0 TO 10\n" \
-                    "30 PRINT I J\n"
-                    "40 NEXT\n" \
-                    "50 NEXT\n")
+source = "Func Foo(a,b)\n" \
+         "  Let x = (+, b, a)\n" \
+         "  RET x\n" \
+         "Func main()\n" \
+         "  Let x = 2\n" \
+         "  Let y = 2\n" \
+         "  x = Foo(x,y)\n" \
+         "  If x == y THEN\n" \
+         "    x = (+, 1, x)\n" \
+         "  END\n" \
+         "  ELSE\n" \
+         "    y = (+, 1, 0)\n" \
+         "  END\n" \
+         "  RET 0"
+toks = lex.tokenize(source)
 print(toks)
-print(parse.parse("", toks))
+print(parse.parse(toks, source, 16))

@@ -1,3 +1,15 @@
+# git操作用 !!!ここはREADMEに追加しないでください！！！！！！！！！！
+だめですよ！！！
+git add .
+git commit -m "parseの機能追加。if文を完全に対応。"
+git push
+
+
+git pull brachname --rebase
+git push brachname
+
+
+
 # YkCC
 
 複数のISA用に設計されたpythonコードで記述されたコンパイラ集合群です
@@ -5,32 +17,27 @@ yukke conpiler collection
  
 # 含まれているファイル
 
-## ASIC
+```
+## ファイル名
+* 機能
+* バージョン
+* 仕様書ファイルorページ先URLを提示
+* YkCC内依存関係
+* 外部依存関係
 
-ASICコンパイラーです。
-ASICからYkIRに変換します
+のフォーマットで
+```
 
-## YkIR
-
-YkCC専用の中間表現です。
-
-## milili
-
-milili用の命令置換ファイル類
-
-## labeler
-
-ラベル置換をします。
 
 # Requirement
  
 YkCCに必要なものはpython3だけです
 
 必要なものがついた場合はここに回帰詰めてください
-
-* Hoge
- Hogeには特別にpython1234がいります燃やしてください
- 
+```
+* Foo
+ 機能Hogeには特別にFooが必要です（例）
+```
 * python3
  
 # Usage
@@ -51,19 +58,22 @@ python main.py 引数等
 
 * Milili ISAは水地が開発した小型ISAです。このISAは無料で配布されています。[ミリリとキロロの現時点の今後の予定について](https://note.com/kairozei_mizuti/n/ne3665631b84f)などを参照してください
 * ISAを追加したい場合はブランチを作成してpushリクエストをしてください
+* [YkIRの仕様書](https://docs.google.com/document/d/1gwuTNnvyJRwIsUZjSjCq8UWaFkzlGOd26euXLZISjPg/edit?usp=sharing)
 # Author
  
+```
 作成情報を列挙する
  
 * 作成者
 * 所属
 * E-mail
+誰かやる人いたら追加して
+```
 
-* ねこゆっけ
+### ねこゆっけ
 * Discord:`@yukkiee_32380`
 
 
-誰かやる人いたら追加して
 
 # License
 ライセンスを明示する

@@ -7,7 +7,8 @@
 
 import re
 from dataclasses import dataclass
-from typing import List, Tuple, Optional
+from typing import List, Optional
+from enum import Enum
 
 @dataclass
 class Token:
@@ -30,12 +31,12 @@ class Lexer:
 
     # Ordered list of token specifications (longer/priority patterns first)
     token_specification = [
-        ("LINE_NUM", r'^[ \t]*\d+'),               # Line number at start of a line
-        ("STRING",   r'"([^"]*)"'),                # "string literal"
         ("NUMBER",   r'\d+(\.\d+)?'),              # Integer or decimal number
-        ("IDENT",    r'[A-Za-z_][A-Za-z0-9_]*'),   # Identifiers and keywords
         ("CMPOP",    r'<=|>=|!=|==|<|>'),       # Operators
-        ("OP",       r'=|\+|-|\*|/|%'),            # Operators
+        ("ASS",      r'='),
+        ("OP",       r'\+|-|\*|/|%|addr'),            # Operators
+        ("STRING",   r'"([^"]*)"'),                # "string literal"
+        ("IDENT",    r'[A-Za-z_][A-Za-z0-9_]*'),   # Identifiers and keywords
         ("COMMA",    r','),                        # Comma
         ("COLON",    r':'),                        # Colon (also used for label separator)
         ("LPAREN",   r'\('),
@@ -75,11 +76,6 @@ class Lexer:
             line_to_scan = truncated
             # If the line begins with a line number, we want to capture it as a single token (LINE_NUM)
             m = re.match(r'^[ \t]*(\d+)', line_to_scan)
-            if m:
-                val = m.group(1)
-                col = m.start(1) + 1
-                tokens.append(Token("LINE_NUM", val, lineno, col))
-                pos = m.end(1)
             # scan the rest of the line
             for mo in self.master_re.finditer(line_to_scan, pos):
                 kind = mo.lastgroup

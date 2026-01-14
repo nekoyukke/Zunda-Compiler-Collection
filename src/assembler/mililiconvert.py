@@ -87,8 +87,13 @@ def argsLoad(tok:Literal | Register, types:type[Register] | type[Literal] | None
         return format(tok.number & 0xf, 'x')
     raise TypeError(f"Unsupported token type: {type(tok).__name__}")
 
-def conversion(Tokens:list[Token]):
+def conversion(Tokens:list[Token], mode:int):
     out:str = ""
+    mode = int(mode)
+    if mode < 0 or mode >= 3:
+        label = ""
+    else:
+        label = ["", ",", "\\n"][mode]
     for i in Tokens:
         print(i)
         match (i.name.upper()):
@@ -100,8 +105,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += argsLoad(i.order[2], Register)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "SUB":
                 if type(i.order[0]) == Register and type(i.order[1]) == Register and type(i.order[2]) == Register:
                     # OK
@@ -110,8 +114,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += argsLoad(i.order[2], Register)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "ADDI":
                 if type(i.order[0]) == Register and type(i.order[1]) == Literal:
                     # OK
@@ -119,8 +122,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[0], Register)
                     out += argsLoad(i.order[1], Literal)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "SUBI":
                 if type(i.order[0]) == Register and type(i.order[1]) == Literal:
                     # OK
@@ -128,8 +130,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[0], Register)
                     out += argsLoad(i.order[1], Literal)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "NAND":
                 if type(i.order[0]) == Register and type(i.order[1]) == Register and type(i.order[2]) == Register:
                     # OK
@@ -138,8 +139,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += argsLoad(i.order[2], Register)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "SHIFT":
                 if type(i.order[0]) == Register and type(i.order[1]) == Register and type(i.order[2]) == Literal:
                     # OK
@@ -148,8 +148,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += hex(i.order[2].value & 0xf)[2::]
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "STORE":
                 if type(i.order[0]) == Register and type(i.order[1]) == Register and type(i.order[2]) == Register:
                     # OK
@@ -158,8 +157,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += argsLoad(i.order[2], Register)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "LOAD":
                 if type(i.order[0]) == Register and type(i.order[1]) == Register and type(i.order[2]) == Register:
                     # OK
@@ -168,8 +166,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += argsLoad(i.order[2], Register)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "BRANCH":
                 if type(i.order[0]) == Literal and type(i.order[1]) == Register and type(i.order[2]) == Register:
                     # OK
@@ -179,8 +176,7 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[2], Register)
                     print("If input reg2 is odd, this may result in a poor implementation.")
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "TIMER":
                 if type(i.order[0]) == Register and type(i.order[1]) == Register and type(i.order[2]) == Register:
                     # OK
@@ -189,19 +185,25 @@ def conversion(Tokens:list[Token]):
                     out += argsLoad(i.order[1], Register)
                     out += argsLoad(i.order[2], Register)
                 else:
-                    print("Error")
-                    return ""
+                    return "Error!"
             case "RET":
                 # OK
                 out += "A"
                 out += "000"
+            case "PC":
+                out += "A1"
+                out += argsLoad(i.order[0], Register)
+                out += argsLoad(i.order[1], Register)
+            case "RNG":
+                out += "A20"
+                out += argsLoad(i.order[0], Register)
             case "HALT":
                 # OK
-                out += "B"
-                out += "000"
+                out += "A"
+                out += "F00"
             case _:
-                print("Error!")
-                return ""
+                return "Error!"
+        out += label
     return out
 
 """
@@ -223,6 +225,6 @@ if __name__ == "__main__":
     source = util.read_a_file("ADDI r1,1\nSUBI r1,1")
     lexed = lexer(source)
     parsed = parse(lexed)
-    res = conversion(parsed)
+    res = conversion(parsed,1)
     with open("out.bin", "w") as f:
         f.write(res)
