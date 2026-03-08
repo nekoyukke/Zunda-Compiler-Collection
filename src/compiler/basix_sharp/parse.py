@@ -87,6 +87,9 @@ def parse(tokens:list[Token], source:str, size:int):
         labeldict[Scope[-1]][name.value] = 0
     
     def uselabel(name:Token, namefunc:str) -> None:
+        if name.value in labeldict[Scope[0]]:
+            labeldict[Scope[0]][name.value] += 1
+            return
         if not name.value in labeldict[Scope[-1]]:
             CallError(name, f"Variable {name.value} does not exist", namefunc, source)
             raise
@@ -425,6 +428,9 @@ def parse(tokens:list[Token], source:str, size:int):
                 current_function.blocks[[i.label for i in current_function.blocks].index(f"L{nowlevel}if")].instructions += [res]
                 return
             case "FOR":
+                addr = usepos()
+                addr = usepos()
+                addr = usepos()
                 if isglobal():
                     CallError(cu(), "The for syntax cannot be used in a global environment.", "FOR", source)
                     raise
@@ -472,9 +478,6 @@ def parse(tokens:list[Token], source:str, size:int):
                 # next切り替え部
                 next_label(f"L{nowlevel}FORNEXT")
                 # NEXT処理
-                addr = usepos()
-                addr = usepos()
-                addr = usepos()
                 current_block.instructions += [
                     HiInstr(
                         "load",
@@ -529,6 +532,7 @@ def parse(tokens:list[Token], source:str, size:int):
 
     def comp(name:str) -> tuple[list[HiInstr], int]:
         addr:int = usepos()
+        print(f"comp addr:{addr}")
         isglobal_ = isglobal()
         cur = cu()
         scope = Getlabel()
@@ -592,7 +596,7 @@ def parse(tokens:list[Token], source:str, size:int):
                     sz,
                     [
                         ElementPair(Element(ElementType.Register, f"@{cur.value}")),
-                        *[ElementPair(Element(ElementType.Register, i.value), psz)
+                        *[ElementPair(Element(ElementType.Register, f"%{i.value}"), psz)
                         for i in Args]
                     ]
                 )], addr
@@ -616,6 +620,10 @@ def parse(tokens:list[Token], source:str, size:int):
                             com2 = comp(f"Compute-{name}")
                             res += com1[0]
                             res += com2[0]
+                            addr = usepos()
+                            print(f"comp addr:{addr}")
+                            print(f"comp addr1:{com1[0]}")
+                            print(f"comp addr2:{com2[0]}")
                             if isglobal_:
                                 res += [HiInstr(
                                     "add",
@@ -636,11 +644,10 @@ def parse(tokens:list[Token], source:str, size:int):
                                         ElementPair(Element(ElementType.Register, f"%{com2[1]}"), sz)
                                     ]
                                 )]
-                            com1 = com2
+                            com1 = ([], com2[1]) # type: ignore
                             if cu().type == "RPAREN":
                                 break
                             ex("COMMA", ", does not exist", f"Compute-{name}")
-                            addr = usepos()
                         ex("RPAREN", "RPAREN missing; expression must be closed", f"Compute-{name}")
                         return res, addr
                     case "-":
@@ -672,7 +679,7 @@ def parse(tokens:list[Token], source:str, size:int):
                                         ElementPair(Element(ElementType.Register, f"%{com2[1]}"), sz)
                                     ]
                                 )]
-                            com1 = com2
+                            com1 = ([], com2[1]) # type: ignore
                             if cu().type == "RPAREN":
                                 break
                             ex("COMMA", ", does not exist", f"Compute-{name}")
@@ -708,7 +715,7 @@ def parse(tokens:list[Token], source:str, size:int):
                                         ElementPair(Element(ElementType.Register, f"%{com2[1]}"), sz)
                                     ]
                                 )]
-                            com1 = com2
+                            com1 = ([], com2[1]) # type: ignore
                             if cu().type == "RPAREN":
                                 break
                             ex("COMMA", ", does not exist", f"Compute-{name}")
@@ -744,7 +751,7 @@ def parse(tokens:list[Token], source:str, size:int):
                                         ElementPair(Element(ElementType.Register, f"%{com2[1]}"), sz)
                                     ]
                                 )]
-                            com1 = com2
+                            com1 = ([], com2[1]) # type: ignore
                             if cu().type == "RPAREN":
                                 break
                             ex("COMMA", ", does not exist", f"Compute-{name}")
@@ -780,7 +787,7 @@ def parse(tokens:list[Token], source:str, size:int):
                                         ElementPair(Element(ElementType.Register, f"%{com2[1]}"), sz)
                                     ]
                                 )]
-                            com1 = com2
+                            com1 = ([], com2[1]) # type: ignore
                             if cu().type == "RPAREN":
                                 break
                             ex("COMMA", ", does not exist", f"Compute-{name}")
@@ -816,7 +823,7 @@ def parse(tokens:list[Token], source:str, size:int):
                                         ElementPair(Element(ElementType.Register, f"%{com2[1]}"), sz)
                                     ]
                                 )]
-                            com1 = com2
+                            com1 = ([], com2[1]) # type: ignore
                             if cu().type == "RPAREN":
                                 break
                             ex("COMMA", ", does not exist", f"Compute-{name}")

@@ -69,7 +69,6 @@ ZundaCCに必要なものはpython3だけです
 DEMOの実行方法など、"hoge"の基本的な使い方を説明する
  
  作成中なので書き途中です！
- 一応mililiconvertだけですが実装しています！
 ```bash
 git clone https://github.com/nekoyukke/ZundaCC
 cd ZundaCC
@@ -80,9 +79,30 @@ python main.py 引数等
  
 注意点などがあれば書く
 
-* Milili ISAは水地が開発した小型ISAです。このISAは無料で配布されています。[ミリリとキロロの現時点の今後の予定について](https://note.com/kairozei_mizuti/n/ne3665631b84f)などを参照してください
-* ISAを追加したい場合はブランチを作成してpushリクエストをしてください
-* [ZundaIRの仕様書](https://docs.google.com/document/d/1gwuTNnvyJRwIsUZjSjCq8UWaFkzlGOd26euXLZISjPg/edit?usp=sharing)
+* debugするときはVSCodeのpython拡張機能のstrictに準ずるものでいったんファイル自体を見てください。
+* import *禁止！やったやつ殺す！
+* fileAでimportしたやつをfileBで使うのだめ！やったらダメ！ファイル関係おかしくなる！
+* GPLv3書けよ？コピペ用にここあるから
+```
+"""
+This file is part of Zunda Compiler Collection.
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+"""
+```
+
 # Author
  
 ```
@@ -102,7 +122,7 @@ python main.py 引数等
 # License
 ライセンスを明示する
  
-"ZundaCC" is [GhPLv3 license](ttps://www.gnu.org/licenses/gpl-3.0.txt).
+"ZundaCompilerCollection" is [GhPLv3 license](ttps://www.gnu.org/licenses/gpl-3.0.txt).
 
 ```
                     GNU GENERAL PUBLIC LICENSE

@@ -23,7 +23,7 @@ from typing import Optional
 from src.backend import zirParser
 
 if __name__ == "__main__":
-    # テスト
+    # パーサテスト
     text = """
 define i16:@main() {
     entry:

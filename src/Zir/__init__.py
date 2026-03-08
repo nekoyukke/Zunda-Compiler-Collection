@@ -15,9 +15,3 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 """
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument("input", help="choice a input file")
-parser.add_argument("-o", "--o", help="choice a output file")
-parser.add_argument("-type", "--type", choices=["milili"], help="choice a type of ISA", default="milili")
-args = parser.parse_args()
