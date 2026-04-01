@@ -43,6 +43,14 @@ class DataType(Zir):
     kind: TypeKind
     bits: Optional[int] # 8, 16, 32, 64, 128
     ptr_depth: int = 0 # 0なら値、1ならポインタ(*)
+    @classmethod
+    # バカ！
+    def toptr(cls, one:"DataType", ptr:int = 1):
+        return DataType(
+            kind=one.kind,
+            bits=one.bits,
+            ptr_depth=one.ptr_depth+ptr
+        )
     # repr
     def __repr__(self) -> str:
         if self.kind == TypeKind.VOID:
@@ -54,18 +62,22 @@ class DataType(Zir):
 https://www.youtube.com/watch?v=-UHYj16ar9U
 """
 # 型のEnum
-class InstrType(Enum):
+class InstrType:
+    i1 = DataType(kind=TypeKind.INT, bits=1, ptr_depth=0)
     i8 = DataType(kind=TypeKind.INT, bits=8, ptr_depth=0)
     i16 = DataType(kind=TypeKind.INT, bits=16, ptr_depth=0)
     i32 = DataType(kind=TypeKind.INT, bits=32, ptr_depth=0)
     i64 = DataType(kind=TypeKind.INT, bits=64, ptr_depth=0)
+    iany = DataType(kind=TypeKind.INT, bits=None, ptr_depth=0)
     u8 = DataType(kind=TypeKind.UINT, bits=8, ptr_depth=0)
     u16 = DataType(kind=TypeKind.UINT, bits=16, ptr_depth=0)
     u32 = DataType(kind=TypeKind.UINT, bits=32, ptr_depth=0)
     u64 = DataType(kind=TypeKind.UINT, bits=64, ptr_depth=0)
+    uany = DataType(kind=TypeKind.UINT, bits=None, ptr_depth=0)
     f32 = DataType(kind=TypeKind.FLOAT, bits=32, ptr_depth=0)
     f64 = DataType(kind=TypeKind.FLOAT, bits=64, ptr_depth=0)
     void = DataType(kind=TypeKind.VOID, bits=None, ptr_depth=0)
+    voidp = DataType(kind=TypeKind.VOID, bits=None, ptr_depth=1)
 
 
 # 値クラスの規基底
@@ -180,6 +192,17 @@ class IcmpInstr(Instruction):
             return f"{"    "*deep}{self.desttype}:icmp {self.cmptype.value} {self.src1type}:{self.src1}, {self.src2type}:{self.src2}"
         return f"{"    "*deep}{self.dest} = {self.desttype}:icmp {self.cmptype.value} {self.src1type}:{self.src1}, {self.src2type}:{self.src2}"
 
+# branchっち
+@dataclass
+class BranchInStr(Instruction):
+    tojmp:Label
+    src:Value
+    srctype:DataType
+    def __repr__(self, deep: int = 0) -> str:
+        if self.dest is None:
+            return f"{"    "*deep}{self.desttype}:br {self.srctype}:{self.src}, {self.tojmp}"
+        return f"{"    "*deep}{self.dest} = {self.desttype}:br {self.srctype}:{self.src}, {self.tojmp}"
+
 # alloca, global
 @dataclass
 class AllocaInstr(Instruction):
@@ -196,6 +219,16 @@ class GlobalInstr(Instruction):
         if self.dest is None:
             return f"{"    "*deep}{self.desttype}:global {self.type}"
         return f"{"    "*deep}{self.dest} = {self.desttype}:global {self.type}"
+
+# retっち
+@dataclass
+class RetInStr(Instruction):
+    src:Value
+    srct:DataType
+    def __repr__(self, deep: int = 0) -> str:
+        if self.dest is None:
+            return f"{"    "*deep}{self.desttype}:ret {self.srct}:{self.src}"
+        return f"{"    "*deep}{self.dest} = {self.desttype}:ret {self.srct}:{self.src}"
 
 # store
 @dataclass
@@ -246,7 +279,7 @@ class BlockInstr(Zir):
             return f"{"    "*deep}{self.name}:"
         return f"{"    "*deep}{self.name}:\n{"\n".join([i.__repr__(deep+1) for i in self.instr])}"
 
-    def add(self, instr:Instruction):
+    def addInstr(self, instr:Instruction):
         self.instr.append(instr)
 
 # function
@@ -254,16 +287,41 @@ class BlockInstr(Zir):
 class FunctionInstr(Zir):
     name:Register
     rettype:DataType
-    blocks:BlockInstr
+    blocks:list[BlockInstr]
     Parms:list[Parm]
+    local_vars:dict[str, Register] = field(default_factory=dict[str, Register])
+    stack_allocas:list[AllocaInstr] = field(default_factory=list[AllocaInstr])
+
+    def add_local(self, name: str, reg: Register, alloca: AllocaInstr):
+        self.local_vars[name] = reg
+        self.stack_allocas.append(alloca)
+
     def __repr__(self, deep:int = 0) -> str:
-        return f"{"    "*deep}define {self.rettype.__repr__()}:{self.name.__repr__()} ({", ".join([i.__repr__() for i in self.Parms])})" + "{" + f"{self.blocks.__repr__(deep+1)}" + "}"
+        indent = "    " * deep
+        params = ", ".join([repr(p) for p in self.Parms])
+        header = f"{indent}define {repr(self.rettype)}:{repr(self.name)} ({params}) {{"
+        body = "\n".join([b.__repr__(deep + 1) for b in self.blocks])
+        return f"{header}\n{body}\n{indent}}}"
+    
+    
+    def addvBlockInStr(self, block:BlockInstr):
+        self.blocks.append(block)
 
 # すべて
 @dataclass
 class ModuleInstr(Zir):
-    instr:list[Instruction | BlockInstr | FunctionInstr] = field(default_factory=list[Instruction | BlockInstr | FunctionInstr])
+    globals:list[GlobalInstr] = field(default_factory=list[GlobalInstr])
+    instr:list[FunctionInstr] = field(default_factory=list[FunctionInstr])
     def __repr__(self) -> str:
-        return "\n".join([i.__repr__(0) for i in self.instr])
-    def addInstr(self, instr:Instruction | BlockInstr | FunctionInstr):
+        parts:list[str] = []
+        if self.globals:
+            parts.append("\n".join([repr(g) for g in self.globals]))
+        if self.instr:
+            parts.append("\n".join([repr(f) for f in self.instr]))
+        return "\n\n".join(parts)
+    
+    def addInstr(self, instr:FunctionInstr):
         self.instr.append(instr)
+    
+    def addGlobals(self, instr:GlobalInstr):
+        self.globals.append(instr)

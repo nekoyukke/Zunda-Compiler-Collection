@@ -24,8 +24,7 @@ import sys
 from src.compiler.basix_sharp.lexer import Token
 from pathlib import Path
 from typing import Optional
-from src.dataobject.hiinstr import HiInstr, Element, DataType, ElementType, ElementPair, TypeKind, AllElement, BasicBlock
-from src.dataobject.hiinstr import Function as hifuntction
+from src.Zir.zir import *
 class ParseError(Exception):
     def __init__(self, message: str, line: int, column: int, source: str, name: str) -> None:
         self.message = message
@@ -65,12 +64,12 @@ def parse(tokens:list[Token], source:str, size:int):
     Scope:list[str] = ["Global"]
     nowtab:int = 0
     Function:list[str] = []
-    current_function:Optional[hifuntction] = None
-    current_block:Optional[BasicBlock] = None
-    assembly:list[AllElement] = []
+    current_function:Optional[FunctionInstr] = None
+    current_block:Optional[BlockInstr] = None
+    assembly:list[Zir] = []
 
-    sz = DataType(TypeKind.INT, None) if size == -1 else DataType(TypeKind.INT, size)
-    psz = DataType(TypeKind.INT, None, ptr_depth=1) if size == -1 else DataType(TypeKind.INT, size, ptr_depth=1)
+    sz:DataType = InstrType.iany if size == -1 else DataType(kind=TypeKind.INT, bits=size)
+    psz:DataType = DataType.toptr(sz)
 
     def usepos() -> int:
         nonlocal llabelpos, glabelpos
@@ -137,7 +136,7 @@ def parse(tokens:list[Token], source:str, size:int):
         ad(name)
         return res
     
-    def stmt() -> list[AllElement]:
+    def stmt() -> list[Zir]:
         nonlocal assembly, current_function
         while cu().type != "EOF":
             if cu().type == "NEWLINE":
@@ -154,16 +153,17 @@ def parse(tokens:list[Token], source:str, size:int):
         nonlocal current_block, current_function
         if current_function is None or current_block is None:
             raise ParseError("program Block Error: this is bug. Please contact us with the program on github.", cu().lineno, cu().col, source, "NONE:Parser")  
-        current_block.instructions += [HiInstr(
-                    "br",
-                    None,
-                    DataType(TypeKind.VOID, 0),
-                    [
-                        ElementPair(Element(ElementType.Label, name), DataType(TypeKind.LABEL, None))
-                    ]
-                )]
+        current_block.instr += [
+            BranchInStr(
+                None,
+                InstrType.void,
+                Label(name),
+                Immediate(1),
+                InstrType.i1
+            )
+        ]
         current_function.blocks += [current_block]
-        current_block = BasicBlock(name)
+        current_block = BlockInstr(name)
         return
     
     # 副作用のみ
@@ -185,7 +185,7 @@ def parse(tokens:list[Token], source:str, size:int):
                     else:
                         if current_block is None:
                             raise ParseError("program Block Error: this is bug. Please contact us with the program on github.", cu().lineno, cu().col, source, "NONE:Parser")
-                        current_block.instructions += call[0]
+                        current_block.instr += call[0]
                     ex("NEWLINE", "Error", "CallStmt")
                     return
                 Ident:Token = ex("IDENT", "An identifier is required.", "Let")
@@ -198,28 +198,30 @@ def parse(tokens:list[Token], source:str, size:int):
                     com = comp("Let")
                     if isglobal():
                         assembly += com[0]
-                        assembly += [HiInstr(
-                            "store",
-                            None,
-                            DataType(TypeKind.VOID, 0),
-                            [
-                                ElementPair(Element(ElementType.Register, f"@{com[1]}"), sz),
-                                ElementPair(Element(ElementType.Register, f"@{Ident.value}"), psz)
-                            ]
-                        )]
+                        assembly += [
+                            StoreInStr(
+                                None,
+                                InstrType.void,
+                                Register(str(com[1]), tRegister.GLOBAL),
+                                sz,
+                                Register(Ident.value, tRegister.GLOBAL),
+                                psz,
+                            )
+                        ]
                     else:
                         if current_block is None:
                             raise ParseError("program Block Error: this is bug. Please contact us with the program on github.", cu().lineno, cu().col, source, "NONE:Parser")
-                        current_block.instructions += com[0]
-                        current_block.instructions += [HiInstr(
-                            "store",
-                            None,
-                            DataType(TypeKind.VOID, 0),
-                            [
-                                ElementPair(Element(ElementType.Register, f"%{com[1]}"), sz),
-                                ElementPair(Element(ElementType.Register, f"%{Ident.value}"), psz)
-                            ]
-                        )]
+                        current_block.instr += com[0]
+                        assembly += [
+                        StoreInStr(
+                                None,
+                                InstrType.void,
+                                Register(str(com[1]), tRegister.LOCAL),
+                                sz,
+                                Register(Ident.value, tRegister.LOCAL),
+                                psz,
+                            )
+                        ]
                     ex("NEWLINE", "Error", "let")
                     return
                 pass
@@ -238,38 +240,35 @@ def parse(tokens:list[Token], source:str, size:int):
                 addlabel(Ident, "Let")
                 if isglobal():
                     assembly += com[0]
-                    assembly += [HiInstr(
-                        "global",
-                        Element(ElementType.Register, f"@{Ident.value}"),
-                        psz,
-                        [
-                            ElementPair(None, sz)
-                        ]
-                    )]
-                    assembly += [HiInstr(
-                        "store",
-                        None,
-                        DataType(TypeKind.VOID, 0),
-                        [
-                            ElementPair(Element(ElementType.Register, f"@{com[1]}"), sz),
-                            ElementPair(Element(ElementType.Register, f"@{Ident.value}"), psz)
-                        ]
-                    )]
+                    assembly += [
+                        GlobalInstr(
+                            Register(Ident.value, tRegister.GLOBAL),
+                            psz,
+                            sz
+                        ),
+                        StoreInStr(
+                            None,
+                            InstrType.void,
+                            Register(str(com[1]), tRegister.GLOBAL),
+                            sz,
+                            Register(Ident.value, tRegister.GLOBAL),
+                            psz
+                        )
+                    ]
                 else:
                     if current_block is None:
                         raise ParseError("program Block Error: this is bug. Please contact us with the program on github.", cu().lineno, cu().col, source, "NONE:Parser")
-                    current_block.instructions += com[0]
-                    current_block.instructions += [HiInstr(
-                        "alloca",
-                        Element(ElementType.Register, f"%{Ident.value}"),
+                    current_block.instr += com[0]
+                    alloca = AllocaInstr(
+                        Register(Ident.value, tRegister.LOCAL),
                         psz,
-                        [
-                            ElementPair(None, sz)
-                        ]
-                    )]
+                        sz
+                    )
+                    
                     if (current_function is not None):
-                        current_function.add_stack_var(Element(ElementType.Register, f"%{Ident.value}"))
-                    current_block.instructions += [HiInstr(
+                        current_function.add_local(Element(ElementType.Register, f"%{Ident.value}"))
+                        current_function.add_local(Ident.value, Register(Ident.value, tRegister.LOCAL), alloca=alloca)
+                    current_block.instr += [HiInstr(
                         "store",
                         None,
                         DataType(TypeKind.VOID, 0),
@@ -315,8 +314,8 @@ def parse(tokens:list[Token], source:str, size:int):
                 ad("RET")
                 # Ret
                 com = comp("RET")
-                current_block.instructions += com[0]
-                current_block.instructions += [HiInstr(
+                current_block.instr += com[0]
+                current_block.instr += [HiInstr(
                     "ret",
                     None,
                     DataType(TypeKind.VOID, 0),
@@ -342,9 +341,9 @@ def parse(tokens:list[Token], source:str, size:int):
                     cmp = ex("CMPOP", "Conditional branching requires an operator", "IF")
                     com2 = comp("IF")
                     cmpdict:dict[str, str] = {"==":"eq", "!=":"ne", ">":"gt", ">=":"ge", "<":"lt", "<=":"le"}
-                    current_block.instructions += com[0]
-                    current_block.instructions += com2[0]
-                    current_block.instructions += [HiInstr(
+                    current_block.instr += com[0]
+                    current_block.instr += com2[0]
+                    current_block.instr += [HiInstr(
                         "icmp",
                         Element(ElementType.Register, f"%{addr}"),
                         DataType(TypeKind.INT, 1),
@@ -355,8 +354,8 @@ def parse(tokens:list[Token], source:str, size:int):
                         ]
                     )]
                 else:
-                    current_block.instructions += com[0]
-                    current_block.instructions += [HiInstr(
+                    current_block.instr += com[0]
+                    current_block.instr += [HiInstr(
                         "bitcast",
                         Element(ElementType.Register, f"%{addr}"),
                         DataType(TypeKind.INT, 1),
@@ -375,7 +374,7 @@ def parse(tokens:list[Token], source:str, size:int):
                 while cu().type != "KEYWORD" or cu().value != "END":
                     expr()
                 ex("KEYWORD", "END dose not exist.", "IF")
-                current_block.instructions += [HiInstr(
+                current_block.instr += [HiInstr(
                     "br",
                     None,
                     DataType(TypeKind.VOID, 0),
@@ -392,7 +391,7 @@ def parse(tokens:list[Token], source:str, size:int):
                     while cu().type != "KEYWORD" and cu().value != "END":
                         expr()
                     ex("KEYWORD", "END dose not exist.", "IF")
-                    current_block.instructions += [HiInstr(
+                    current_block.instr += [HiInstr(
                         "br",
                         None,
                         DataType(TypeKind.VOID, 0),
@@ -448,16 +447,16 @@ def parse(tokens:list[Token], source:str, size:int):
                     CallError(tok, "The 'TO' is unclear", "FOR", source)
                     raise
                 com2 = comp("FOR")
-                current_block.instructions += com[0]
-                current_block.instructions += com2[0]
-                current_block.instructions += [HiInstr(
+                current_block.instr += com[0]
+                current_block.instr += com2[0]
+                current_block.instr += [HiInstr(
                     "alloca",
                     Element(ElementType.Register, f"%{Ident.value}"),
                     psz,
                     [ElementPair(None, sz)]
                 )]
                 current_function.add_stack_var(Element(ElementType.Register, f"%{Ident.value}"))
-                current_block.instructions += [HiInstr(
+                current_block.instr += [HiInstr(
                     "store",
                     None,
                     DataType(TypeKind.VOID, 0),
@@ -478,7 +477,7 @@ def parse(tokens:list[Token], source:str, size:int):
                 # next切り替え部
                 next_label(f"L{nowlevel}FORNEXT")
                 # NEXT処理
-                current_block.instructions += [
+                current_block.instr += [
                     HiInstr(
                         "load",
                         Element(ElementType.Register, f"%{addr - 2}"),
@@ -530,7 +529,7 @@ def parse(tokens:list[Token], source:str, size:int):
                 CallError(cu(), f"unkonw token {cu()}", "expr-end", source)
                 raise
 
-    def comp(name:str) -> tuple[list[HiInstr], int]:
+    def comp(name:str) -> tuple[list[Instruction], int]:
         addr:int = usepos()
         print(f"comp addr:{addr}")
         isglobal_ = isglobal()
