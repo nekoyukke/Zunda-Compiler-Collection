@@ -1,23 +1,43 @@
-"""
-This file is part of Zunda Compiler Collection.
+from lexer import tokenize
+from tokens import Token
+from myast import *
+from parser import *
+from analysis import *
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+import logging
+import utils  # type: ignore
+# from interpreter import evaluate
+# from environment import Environment
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
+def run_source(source: str) -> None:
+    """
+    ソースコードを実行する
+    """
+    logging.debug(f"Tokens::")
+    tokens: list[Token] = tokenize(source)
+    for t in tokens:
+        logging.debug(f"Token: {t}")
+    node = ast(tokens, source)
+    sc = ScopeChecker(node, source)
+    sc.reset()
+    print("sccheck")
+    print(sc.visit_Scope_Check().__repr__())
+    tc = TypeChecker(node, source)
+    print("tccheck")
+    print(tc.visit_TypeCheck())
+    return None
 
-You should have received a copy of the GNU General Public License
-along with this program. If not, see <https://www.gnu.org/licenses/>.
-
-"""
-import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument("input", help="choice a input file")
-parser.add_argument("-o", "--o", help="choice a output file")
-parser.add_argument("-type", "--type", choices=["milili"], help="choice a type of ISA", default="milili")
-args = parser.parse_args()
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) == 2:
+        with open(sys.argv[1]) as f:
+            print(run_source(f.read()))
+    else:
+        while True:
+            line = input(">>> ")
+            print(run_source(line))
+            """try:
+                line = input(">>> ")
+                print(run_source(line))
+            except Exception as e:
+                print("Error:", e)"""
